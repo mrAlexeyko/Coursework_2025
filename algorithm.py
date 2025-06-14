@@ -1,15 +1,18 @@
 import random
 from typing import List, Dict, Tuple
 
+
 class Algorithm:
     """Клас, що містить жадібний та генетичний алгоритми."""
     @staticmethod
     def greedy(servers: List[Dict], requests: List[Dict]) -> Tuple[Dict, float]:
         """Жадібний алгоритм для розподілу запитів між серверами."""
-        server_states = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0} for s in servers}
+        server_states = {
+            s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0} for s in servers}
         total_profit = 0
 
-        sorted_requests = sorted(enumerate(requests), key=lambda x: x[1]["c"] / x[1]["d"], reverse=True)
+        sorted_requests = sorted(
+            enumerate(requests), key=lambda x: x[1]["c"] / x[1]["d"], reverse=True)
 
         for j, _ in sorted_requests:
             best_server = -1
@@ -17,7 +20,8 @@ class Algorithm:
             for i, server in server_states.items():
                 if (server["n"] < servers[i]["K"] and
                         server["used_volume"] + requests[j]["d"] <= servers[i]["D"]):
-                    remain = servers[i]["D"] - (server["used_volume"] + requests[j]["d"])
+                    remain = servers[i]["D"] - \
+                        (server["used_volume"] + requests[j]["d"])
                     if remain < min_remain:
                         min_remain = remain
                         best_server = i
@@ -38,7 +42,8 @@ class Algorithm:
         if not servers or not requests:
             raise ValueError("Сервери або запити відсутні.")
 
-        population = Algorithm._initialize_population(servers, requests, population_size)
+        population = Algorithm._initialize_population(
+            servers, requests, population_size)
         best_fitness = float('-inf')
         best_solution = None
         stagnant_count = 0
@@ -46,18 +51,29 @@ class Algorithm:
         for _ in range(generations):
             new_population = []
             for _ in range(population_size // 2):
-                parent1 = Algorithm._tournament_selection(population, servers, requests)
-                parent2 = Algorithm._tournament_selection(population, servers, requests)
-                child1, child2 = Algorithm._uniform_crossover(parent1, parent2, servers, requests)
-                child1 = Algorithm._mutate(child1, servers, requests, mutation_rate)
-                child2 = Algorithm._mutate(child2, servers, requests, mutation_rate)
+                parent1 = Algorithm._tournament_selection(
+                    population, servers, requests)
+                parent2 = Algorithm._tournament_selection(
+                    population, servers, requests)
+                # parent1 = Algorithm._phenotypic_outbreeding_selection(
+                #     population, servers, requests)
+                # parent2 = Algorithm._phenotypic_outbreeding_selection(
+                #     population, servers, requests)
+                child1, child2 = Algorithm._uniform_crossover(
+                    parent1, parent2, servers, requests)
+                child1 = Algorithm._mutate(
+                    child1, servers, requests, mutation_rate)
+                child2 = Algorithm._mutate(
+                    child2, servers, requests, mutation_rate)
                 new_population.extend([child1, child2])
 
-            best_current = max(population, key=lambda x: Algorithm._calculate_fitness(x, requests, servers))
+            best_current = max(
+                population, key=lambda x: Algorithm._calculate_fitness(x, requests, servers))
             new_population.append(best_current)
             population = new_population[:population_size]
 
-            current_best_fitness = Algorithm._calculate_fitness(best_current, requests, servers)
+            current_best_fitness = Algorithm._calculate_fitness(
+                best_current, requests, servers)
             if current_best_fitness > best_fitness:
                 best_fitness = current_best_fitness
                 best_solution = best_current
@@ -75,11 +91,13 @@ class Algorithm:
         """Ініціалізація популяції для генетичного алгоритму."""
         population = []
         for _ in range(population_size):
-            solution = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0} for s in servers}
+            solution = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0}
+                        for s in servers}
             for req_idx in range(len(requests)):
                 server_idx = random.randint(0, len(servers) - 1)
                 solution[server_idx]["R"].add(req_idx)
-            population.append(Algorithm._repair_solution(solution, servers, requests))
+            population.append(Algorithm._repair_solution(
+                solution, servers, requests))
         return population
 
     @staticmethod
@@ -89,10 +107,27 @@ class Algorithm:
         return max(tournament, key=lambda x: Algorithm._calculate_fitness(x, requests, servers))
 
     @staticmethod
+    def _phenotypic_outbreeding_selection(population: List[Dict], servers: List[Dict], requests: List[Dict]) -> Tuple[Dict, Dict]:
+        """Вибір двох батьків з максимальною різницею в ЦФ для аутбридингу."""
+        if len(population) < 2:
+            raise ValueError("Популяція занадто мала для аутбридингу.")
+
+        fitness_values = [(ind, Algorithm._calculate_fitness(
+            ind, requests, servers)) for ind in population]
+        fitness_values.sort(key=lambda x: x[1])
+
+        parent1 = fitness_values[0][0]
+        parent2 = fitness_values[-1][0]
+
+        return parent1.copy(), parent2.copy()
+
+    @staticmethod
     def _uniform_crossover(parent1: Dict, parent2: Dict, servers: List[Dict], requests: List[Dict]) -> Tuple[Dict, Dict]:
         """Виконання рівномірного кросоверу між двома батьками."""
-        child1 = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0} for s in servers}
-        child2 = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0} for s in servers}
+        child1 = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0}
+                  for s in servers}
+        child2 = {s["id"] - 1: {"R": set(), "n": 0, "used_volume": 0, "C": 0}
+                  for s in servers}
         for req_idx in range(len(requests)):
             if random.random() < 0.5:
                 for s in range(len(servers)):
@@ -127,10 +162,12 @@ class Algorithm:
         """Виправлення рішення для відповідності обмеженням."""
         for s in solution:
             solution[s]["n"] = len(solution[s]["R"])
-            solution[s]["used_volume"] = sum(requests[r]["d"] for r in solution[s]["R"])
+            solution[s]["used_volume"] = sum(
+                requests[r]["d"] for r in solution[s]["R"])
             while solution[s]["n"] > servers[s]["K"] or solution[s]["used_volume"] > servers[s]["D"]:
                 if solution[s]["R"]:
-                    worst_idx = min(solution[s]["R"], key=lambda x: requests[x]["c"] / requests[x]["d"])
+                    worst_idx = min(
+                        solution[s]["R"], key=lambda x: requests[x]["c"] / requests[x]["d"])
                     solution[s]["R"].remove(worst_idx)
                     solution[s]["n"] -= 1
                     solution[s]["used_volume"] -= requests[worst_idx]["d"]
